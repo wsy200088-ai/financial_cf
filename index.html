@@ -156,7 +156,15 @@
 
   <!-- ZONE 3: Monthly trend -->
   <div class="section">
-    <div class="section-title">年度月份走勢 <span class="badge">★年度</span></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <div class="section-title" style="margin-bottom:0;">年度月份走勢 <span class="badge">★年度</span></div>
+      <div class="view-toggle" style="margin-bottom:0;">
+        <button class="vtbtn active-ap"     id="mBtnAp"      onclick="toggleMonthView('ap')">應付</button>
+        <button class="vtbtn active-prepay" id="mBtnPrepay"  onclick="toggleMonthView('prepay')">預付</button>
+        <button class="vtbtn"               id="mBtnX"       onclick="toggleMonthView('x')" style="background:var(--blue-light);color:var(--blue-dark);border-color:#85B7EB;">-</button>
+        <button class="vtbtn"               id="mBtnWriteoff" onclick="toggleMonthView('writeoff')" style="background:#FCEBEB;color:#A32D2D;border-color:#F09595;">沖銷</button>
+      </div>
+    </div>
     <div class="chart-wrap">
       <canvas id="monthlyChart"></canvas>
     </div>
@@ -251,6 +259,7 @@ let barsShown = 10;
 let cardsShown = 10;
 let monthlyChartInst = null;
 let donutChartInst = null;
+let monthViews = { ap: true, prepay: true, x: true, writeoff: true };
 
 function fmt(n) {
   if (n === null || n === undefined) return '—';
@@ -415,30 +424,30 @@ function renderMonthlyChart() {
       ctx.fillStyle = '#444441';
       ctx.textAlign = 'center';
       data.labels.forEach((label, i) => {
-        const total = totalData[i];
-        const positiveSum = (apData[i]||0) + (preData[i]||0) + (xData[i]||0);
+        const positiveSum =
+          (monthViews.ap ? (apData[i]||0) : 0) +
+          (monthViews.prepay ? (preData[i]||0) : 0) +
+          (monthViews.x ? (xData[i]||0) : 0);
         const xPos = x.getPixelForValue(i);
         const yPos = y.getPixelForValue(positiveSum) - 6;
-        if (total !== 0) ctx.fillText((total/10000).toFixed(0)+'萬', xPos, yPos);
+        if (totalData[i] !== 0) ctx.fillText((totalData[i]/10000).toFixed(0)+'萬', xPos, yPos);
       });
       ctx.restore();
     }
   };
+
+  const datasets = [];
+  if (monthViews.ap)       datasets.push({ label: '應付', data: apData,      backgroundColor: '#5DCAA5', stack: 'a' });
+  if (monthViews.prepay)   datasets.push({ label: '預付', data: preData,      backgroundColor: '#EF9F27', stack: 'a' });
+  if (monthViews.x)        datasets.push({ label: '-',    data: xData,        backgroundColor: '#B5D4F4', stack: 'a' });
+  if (monthViews.writeoff) datasets.push({ label: '沖銷', data: writeoffData, backgroundColor: '#F09595', stack: 'a' });
 
   const ctx = document.getElementById('monthlyChart').getContext('2d');
   if (monthlyChartInst) monthlyChartInst.destroy();
   monthlyChartInst = new Chart(ctx, {
     type: 'bar',
     plugins: [totalLabelPlugin],
-    data: {
-      labels,
-      datasets: [
-        { label: '應付',  data: apData,      backgroundColor: '#5DCAA5', stack: 'a' },
-        { label: '預付',  data: preData,      backgroundColor: '#EF9F27', stack: 'a' },
-        { label: 'X（待確認）', data: xData,  backgroundColor: '#B5D4F4', stack: 'a' },
-        { label: '沖銷',  data: writeoffData, backgroundColor: '#F09595', stack: 'a' },
-      ]
-    },
+    data: { labels, datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
@@ -454,13 +463,23 @@ function renderMonthlyChart() {
       },
       scales: {
         x: { stacked: true, ticks: { font: { size: 11 } } },
-        y: {
-          stacked: true,
-          ticks: { font: { size: 11 }, callback: v => (v/10000).toFixed(0) + '萬' }
-        }
+        y: { stacked: true, ticks: { font: { size: 11 }, callback: v => (v/10000).toFixed(0) + '萬' } }
       }
     }
   });
+}
+
+function toggleMonthView(type) {
+  const only = monthViews[type] && !Object.entries(monthViews).some(([k,v]) => k !== type && v);
+  if (!only) monthViews[type] = !monthViews[type];
+  if (!Object.values(monthViews).some(Boolean)) monthViews[type] = true;
+
+  const btnId = { ap: 'mBtnAp', prepay: 'mBtnPrepay', x: 'mBtnX', writeoff: 'mBtnWriteoff' };
+  document.getElementById('mBtnAp').className      = 'vtbtn' + (monthViews.ap      ? ' active-ap'      : '');
+  document.getElementById('mBtnPrepay').className  = 'vtbtn' + (monthViews.prepay  ? ' active-prepay'  : '');
+  document.getElementById('mBtnX').style.cssText        = monthViews.x        ? 'background:var(--blue-light);color:var(--blue-dark);border-color:#85B7EB;'  : 'opacity:0.4;';
+  document.getElementById('mBtnWriteoff').style.cssText = monthViews.writeoff ? 'background:#FCEBEB;color:#A32D2D;border-color:#F09595;' : 'opacity:0.4;';
+  renderMonthlyChart();
 }
 
 function populateCatFilter() {
