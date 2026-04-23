@@ -613,6 +613,8 @@ function toggleView(type) {
   barsShown = 10;
   renderVendorBars();
 }
+
+function isParallelMode() {
   return activeViews.annual && (activeViews.ap || activeViews.prepay);
 }
 
