@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FY25 倍樂生台北支社 支出實績報告</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --blue: #185FA5; --blue-light: #E6F1FB; --blue-mid: #378ADD; --blue-dark: #0C447C;
+    --green: #1D9E75; --green-light: #E1F5EE; --green-mid: #5DCAA5; --green-dark: #085041;
+    --amber: #BA7517; --amber-light: #FAEEDA; --amber-mid: #EF9F27;
+    --red: #A32D2D; --red-light: #FCEBEB;
+    --gray: #5F5E5A; --gray-light: #F1EFE8; --gray-mid: #B4B2A9;
+    --bg: #ffffff; --bg2: #F8F7F5; --bg3: #F1EFE8;
+    --text: #1a1a1a; --text2: #5F5E5A; --text3: #888780;
+    --border: rgba(0,0,0,0.1); --border2: rgba(0,0,0,0.18);
+    --radius: 8px; --radius-lg: 12px;
+  }
+  body { font-family: 'Noto Sans TC', 'PingFang TC', sans-serif; background: var(--bg2); color: var(--text); font-size: 14px; line-height: 1.6; }
+  .page { max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; }
+
+  /* Header */
+  .header { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 16px 20px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  .header-title h1 { font-size: 18px; font-weight: 600; color: var(--text); }
+  .header-title p { font-size: 12px; color: var(--text2); margin-top: 3px; }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn { font-size: 12px; padding: 6px 12px; border: 0.5px solid var(--border2); border-radius: var(--radius); background: var(--bg); color: var(--text); cursor: pointer; transition: background 0.15s; white-space: nowrap; }
+  .btn:hover { background: var(--bg2); }
+  .btn.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .btn.primary:hover { background: var(--blue-dark); }
+  .upload-label { font-size: 12px; padding: 6px 12px; border: 0.5px solid var(--blue); border-radius: var(--radius); background: var(--blue-light); color: var(--blue-dark); cursor: pointer; transition: background 0.15s; white-space: nowrap; }
+  .upload-label:hover { background: #cce0f5; }
+  #uploadInput { display: none; }
+
+  /* KPI Cards */
+  .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
+  .kpi-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 18px; }
+  .kpi-label { font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+  .kpi-month { font-weight: 700; color: var(--text); }
+  .kpi-num { font-size: 22px; font-weight: 600; color: var(--text); line-height: 1.2; }
+  .kpi-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+  /* Section card */
+  .section { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 16px 20px; margin-bottom: 14px; }
+  .section-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .section-title .badge { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 999px; background: var(--bg3); color: var(--text2); }
+
+  /* Monthly chart */
+  .chart-wrap { position: relative; height: 200px; }
+
+  /* Donut + Bar split */
+  .viz-split { display: grid; grid-template-columns: 260px 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 700px) { .viz-split { grid-template-columns: 1fr; } }
+
+  /* Donut */
+  .donut-wrap { display: flex; flex-direction: column; gap: 10px; }
+  .donut-chart-wrap { position: relative; height: 160px; }
+  .cat-filter-select { width: 100%; font-size: 12px; padding: 6px 8px; border: 0.5px solid var(--border2); border-radius: var(--radius); background: var(--bg); color: var(--text); cursor: pointer; }
+  .legend-list { display: flex; flex-direction: column; gap: 4px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; padding: 3px 6px; border-radius: 4px; transition: background 0.1s; }
+  .legend-item:hover { background: var(--bg2); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .legend-pct { margin-left: auto; color: var(--text3); font-size: 11px; }
+
+  /* View toggle */
+  .view-toggle { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .vtbtn { font-size: 12px; padding: 5px 12px; border: 1.5px solid var(--border2); border-radius: 999px; background: var(--bg); color: var(--text2); cursor: pointer; transition: all 0.15s; }
+  .vtbtn.active-annual { background: var(--blue-light); color: var(--blue-dark); border-color: var(--blue-mid); }
+  .vtbtn.active-ap { background: var(--green-light); color: var(--green-dark); border-color: var(--green-mid); }
+  .vtbtn.active-prepay { background: var(--amber-light); color: var(--amber); border-color: var(--amber-mid); }
+
+  /* Vendor bar chart */
+  .vendor-bar-wrap { margin-bottom: 4px; }
+  .vbar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; cursor: pointer; }
+  .vbar-name { font-size: 12px; color: var(--text); width: 130px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .vbar-track { flex: 1; height: 18px; background: var(--bg3); border-radius: 3px; overflow: hidden; display: flex; }
+  .vbar-seg { height: 100%; transition: width 0.3s; }
+  .vbar-val { font-size: 11px; font-weight: 500; color: var(--text); width: 60px; text-align: right; flex-shrink: 0; }
+
+  /* Vendor cards */
+  .vendor-list { display: flex; flex-direction: column; gap: 5px; }
+  .vendor-card { border: 0.5px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: border-color 0.15s; }
+  .vendor-card.expanded { border-color: var(--blue-mid); }
+  .vendor-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; cursor: pointer; background: var(--bg); transition: background 0.1s; }
+  .vendor-header:hover { background: var(--bg2); }
+  .vendor-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .vendor-name.negative { color: var(--red); }
+  .vendor-tag { font-size: 10px; padding: 1px 7px; border-radius: 999px; background: var(--blue-light); color: var(--blue-dark); margin-left: 6px; }
+  .vendor-right { display: flex; align-items: center; gap: 10px; }
+  .vendor-amount { font-size: 13px; font-weight: 600; color: var(--text); }
+  .vendor-amount.negative { color: var(--red); }
+  .expand-icon { font-size: 10px; color: var(--text3); }
+  .vendor-body { display: none; background: var(--bg2); border-top: 0.5px solid var(--border); padding: 10px 14px; }
+  .vendor-body.open { display: block; }
+  .vendor-nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 8px; }
+  .vnum-item .vnum-label { font-size: 11px; color: var(--text3); margin-bottom: 2px; }
+  .vnum-item .vnum-val { font-size: 14px; font-weight: 600; }
+  .vnum-item .vnum-val.blue { color: var(--blue-dark); }
+  .vnum-item .vnum-val.green { color: var(--green-dark); }
+  .vnum-item .vnum-val.amber { color: var(--amber); }
+  .vnum-item .vnum-val.red { color: var(--red); }
+  .vendor-note { font-size: 11px; color: var(--text2); background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 6px 10px; margin-top: 6px; }
+  .show-more-btn { width: 100%; padding: 8px; font-size: 12px; color: var(--blue); background: var(--blue-light); border: none; border-radius: var(--radius); cursor: pointer; margin-top: 8px; }
+  .show-more-btn:hover { background: #cce0f5; }
+
+  /* Memo */
+  .memo-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+  .memo-body { margin-top: 10px; display: none; }
+  .memo-body.open { display: block; }
+  .memo-textarea { width: 100%; min-height: 80px; font-size: 13px; padding: 8px 10px; border: 0.5px solid var(--border2); border-radius: var(--radius); resize: vertical; font-family: inherit; color: var(--text); background: var(--bg); }
+  .memo-hint { font-size: 11px; color: var(--text3); text-align: right; margin-top: 4px; }
+
+  .sep { border: none; border-top: 0.5px solid var(--border); margin: 12px 0; }
+  .no-print { }
+  @media print { .no-print { display: none !important; } body { background: white; } .page { padding: 0; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header no-print">
+    <div class="header-title">
+      <h1>FY25 倍樂生台北支社　支出實績報告</h1>
+      <p id="headerSub">會計年度 2025/04 ～ 2026/03　|　最新月份：<strong id="latestMonthLabel">2026/03</strong></p>
+    </div>
+    <div class="toolbar">
+      <label class="upload-label" for="uploadInput">&#8593; 上傳 Excel 更新</label>
+      <input type="file" id="uploadInput" accept=".xlsx,.xlsm">
+      <button class="btn" onclick="saveHTML()">另存 HTML</button>
+      <button class="btn" onclick="window.print()">另存 PDF</button>
+    </div>
+  </div>
+
+  <!-- KPI CARDS -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">FY25 累計總支出</div>
+      <div class="kpi-num" id="kpiTotal">—</div>
+      <div class="kpi-sub">2025/04 ～ 2026/03 全年</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">當月應付　<span class="kpi-month" id="kpiApMonth">2026/03</span></div>
+      <div class="kpi-num" id="kpiAp">—</div>
+      <div class="kpi-sub" id="kpiApPct">佔累計 —%</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">當月預付　<span class="kpi-month" id="kpiPreMonth">2026/03</span></div>
+      <div class="kpi-num" id="kpiPre">—</div>
+      <div class="kpi-sub" id="kpiPrePct">佔累計 —%</div>
+    </div>
+  </div>
+
+  <!-- ZONE 3: Monthly trend -->
+  <div class="section">
+    <div class="section-title">年度月份走勢 <span class="badge">★年度</span></div>
+    <div class="chart-wrap">
+      <canvas id="monthlyChart"></canvas>
+    </div>
+  </div>
+
+  <!-- ZONE 4: Donut + Bar -->
+  <div class="section">
+    <div class="section-title">業務類別佔比 ＆ 廠商支出排行</div>
+    <div class="viz-split">
+
+      <!-- Donut -->
+      <div class="donut-wrap">
+        <select class="cat-filter-select" id="catFilter" onchange="applyCatFilter()">
+          <option value="">全部業務類別</option>
+        </select>
+        <div class="donut-chart-wrap">
+          <canvas id="donutChart"></canvas>
+        </div>
+        <div class="legend-list" id="donutLegend"></div>
+      </div>
+
+      <!-- Bar side -->
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:6px;">
+          <div class="view-toggle" style="margin-bottom:0;">
+            <button class="vtbtn active-annual" id="btnAnnual" onclick="toggleView('annual')">年度累計</button>
+            <button class="vtbtn" id="btnAp" onclick="toggleView('ap')">當月應付</button>
+            <button class="vtbtn" id="btnPrepay" onclick="toggleView('prepay')">當月預付</button>
+          </div>
+          <button class="btn" id="barsCollapseBtn" onclick="collapseToTop10()" style="display:none;font-size:11px;padding:4px 10px;">縮合至 Top 10 ↑</button>
+        </div>
+        <div class="vendor-bar-wrap" id="vendorBars"></div>
+        <button class="show-more-btn" id="barsShowMore" onclick="showMoreBars()">顯示第 11 ～ 20 筆 ▼</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ZONE 5: Vendor search -->
+  <div class="section">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <div class="section-title" style="margin-bottom:0;">廠商查詢 <span class="badge" id="searchResultCount"></span></div>
+      <button class="btn" id="collapseTopBtn" onclick="collapseToTop10()" style="display:none;">縮合至 Top 10 ↑</button>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;">
+      <input type="text" id="vendorSearch" placeholder="輸入廠商名稱關鍵字搜尋（模糊比對）..." oninput="onVendorSearch()" style="flex:1;font-size:13px;padding:7px 12px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text);">
+      <button class="btn" onclick="clearSearch()">清除</button>
+    </div>
+    <div id="searchBarArea" style="display:none;margin-bottom:14px;">
+      <div class="view-toggle" id="searchViewToggle">
+        <button class="vtbtn active-annual" id="sBtnAnnual" onclick="toggleSearchView('annual')">年度累計</button>
+        <button class="vtbtn" id="sBtnAp" onclick="toggleSearchView('ap')">當月應付</button>
+        <button class="vtbtn" id="sBtnPrepay" onclick="toggleSearchView('prepay')">當月預付</button>
+      </div>
+      <div id="searchBars"></div>
+    </div>
+    <div class="vendor-list" id="searchCards"></div>
+    <div id="searchEmpty" style="display:none;text-align:center;padding:24px;font-size:13px;color:var(--text3);">未找到符合的廠商</div>
+  </div>
+
+  <!-- ZONE 6: Memo -->
+  <div class="section">
+    <div class="memo-header" onclick="toggleMemo()">
+      <span class="section-title" style="margin-bottom:0;">會議紀錄</span>
+      <span id="memoToggleIcon" style="font-size:12px; color:var(--text3);">▶ 展開</span>
+    </div>
+    <div class="memo-body" id="memoBody">
+      <textarea class="memo-textarea" id="memoText" placeholder="輸入會議記錄，另存 HTML 時一併保留..."></textarea>
+      <div class="memo-hint">輸入後另存 HTML 即自動保存</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const CAT_COLORS = {
+  '舞台劇':    { bg:'#378ADD', light:'#E6F1FB', dark:'#0C447C' },
+  'IT系統':    { bg:'#1D9E75', light:'#E1F5EE', dark:'#085041' },
+  '製作印刷':  { bg:'#EF9F27', light:'#FAEEDA', dark:'#633806' },
+  '商品採購':  { bg:'#D85A30', light:'#FAECE7', dark:'#4A1B0C' },
+  '物流倉儲':  { bg:'#7F77DD', light:'#EEEDFE', dark:'#26215C' },
+  '行銷投放':  { bg:'#D4537E', light:'#FBEAF0', dark:'#4B1528' },
+  '辦公室費用':{ bg:'#888780', light:'#F1EFE8', dark:'#2C2C2A' },
+  '人事福利':  { bg:'#5DCAA5', light:'#E1F5EE', dark:'#04342C' },
+  '財務法務':  { bg:'#BA7517', light:'#FAEEDA', dark:'#412402' },
+  '其他':      { bg:'#B4B2A9', light:'#F1EFE8', dark:'#444441' },
+};
+
+let DB = null;
+let activeViews = { annual: true, ap: false, prepay: false };
+let catFilter = '';
+let barsShown = 10;
+let cardsShown = 10;
+let monthlyChartInst = null;
+let donutChartInst = null;
+
+function fmt(n) {
+  if (n === null || n === undefined) return '—';
+  return Math.round(n).toLocaleString('zh-TW');
+}
+function fmtWan(n) {
+  if (!n) return '0';
+  const w = Math.round(n / 10000);
+  return w.toLocaleString('zh-TW') + '萬';
+}
+
+function rocToAD(roc) {
+  const p = roc.split('/');
+  return (parseInt(p[0]) + 1911) + '/' + p[1];
+}
+
+function parseExcel(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+
+      // ★年度 sheet
+      const wsYr = wb.Sheets['★年度'];
+      if (!wsYr) { alert('找不到「★年度」工作表'); return; }
+      const yrData = XLSX.utils.sheet_to_json(wsYr, { header: 1, defval: null });
+
+      // Find header row with months
+      let monthRow = null;
+      for (let i = 0; i < yrData.length; i++) {
+        const r = yrData[i];
+        if (r && r[2] && typeof r[2] === 'string' && r[2].includes('/')) {
+          monthRow = i; break;
+        }
+      }
+      if (monthRow === null) { alert('無法解析★年度工作表'); return; }
+
+      const months = yrData[monthRow].slice(2, 14).filter(Boolean);
+      let apRow = null, preRow = null, totalRow = null, xRow = null, writeoffRow = null;
+      for (let i = monthRow + 1; i < yrData.length; i++) {
+        const label = String(yrData[i][1] || '').trim();
+        if (label === '應付') apRow = yrData[i].slice(2, 14);
+        if (label === '預付') preRow = yrData[i].slice(2, 14);
+        if (label === '沖銷') writeoffRow = yrData[i].slice(2, 14);
+        if (label === 'Ｘ' || label === 'X') xRow = yrData[i].slice(2, 14);
+        if (label === '總計') { totalRow = yrData[i].slice(2, 14); break; }
+      }
+
+      const monthly = months.map((m, idx) => ({
+        month_roc: m,
+        month_ad: rocToAD(m),
+        ap: apRow ? (apRow[idx] || 0) : 0,
+        prepay: preRow ? (preRow[idx] || 0) : 0,
+        writeoff: writeoffRow ? (writeoffRow[idx] || 0) : 0,
+        x: xRow ? (xRow[idx] || 0) : 0,
+        total: totalRow ? (totalRow[idx] || 0) : 0
+      }));
+
+      // ★說明頁 sheet
+      const wsSp = wb.Sheets['★說明頁(樞紐)'];
+      if (!wsSp) { alert('找不到「★說明頁(樞紐)」工作表'); return; }
+      const spData = XLSX.utils.sheet_to_json(wsSp, { header: 1, defval: null });
+
+      // Build AP and prepay lookups
+      const apLookup = {}, preLookup = {}, preNoteLookup = {};
+      for (let i = 7; i < spData.length; i++) {
+        const row = spData[i];
+        if (row[6] && row[6] !== '總計') apLookup[String(row[6]).trim()] = row[7] || 0;
+        if (row[11] && row[11] !== '總計') {
+          preLookup[String(row[11]).trim()] = row[12] || 0;
+          if (row[13]) preNoteLookup[String(row[11]).trim()] = String(row[13]);
+        }
+      }
+
+      const vendors = [];
+      for (let i = 7; i < spData.length; i++) {
+        const row = spData[i];
+        const biz = row[0], vendor = row[1], cum = row[2];
+        if (vendor && String(vendor).trim() !== '総計' && String(vendor).trim() !== '總計' && cum !== null) {
+          const v = String(vendor).trim();
+          vendors.push({
+            business: biz ? String(biz).trim() : '',
+            vendor: v,
+            cumulative: cum,
+            ap: apLookup[v] || 0,
+            prepay: preLookup[v] || 0,
+            note: preNoteLookup[v] || '',
+            category: categorize(biz ? String(biz) : '')
+          });
+        }
+      }
+
+      const latestMonth = monthly[monthly.length - 1];
+      DB = {
+        monthly,
+        vendors,
+        latest_month_ad: latestMonth.month_ad,
+        total_cumulative: vendors.reduce((s, v) => s + v.cumulative, 0),
+        total_ap: latestMonth.ap,
+        total_prepay: latestMonth.prepay
+      };
+      barsShown = 10; catFilter = ''; activeViews = { annual: true, ap: false, prepay: false }; searchViews = { annual: true, ap: false, prepay: false };
+      clearSearch();
+      renderAll();
+      alert('資料更新成功！');
+    } catch(err) {
+      alert('解析失敗：' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function categorize(b) {
+  if (!b) return '其他';
+  if (/舞台劇|劇團|年代售票|娛樂稅|錄音室|偶師|樂園/.test(b)) return '舞台劇';
+  if (/印刷|貼紙|紙箱|完稿|繪圖|影像|攝影|配音|打字|橋樑書|電子書|數位典藏/.test(b)) return '製作印刷';
+  if (/[Dd][Bb]2|[Ee][Rr][Pp]|[Cc][Rr][Mm]|IDC|[Aa][Pp][Pp]|軟體|系統|資訊|網路|[Ff]irewall|SSL|BCL|EDM|CDP|[Ss]uper\s*8|LINE|電話系統|Atlassian|KingswaySoft|Adobe/.test(b)) return 'IT系統';
+  if (/KOL|FB|IG|廣告|行銷|社群|SHOPLINE|Mirafeel|代操|宣傳/.test(b)) return '行銷投放';
+  if (/倉庫|物流|報關|貨運|快遞|郵局|黑貓|港務/.test(b)) return '物流倉儲';
+  if (/勞工保險|健保|員工保險|員工健檢|福委|研修|社員/.test(b)) return '人事福利';
+  if (/國稅|稅捐|會計|律師/.test(b)) return '財務法務';
+  if (/租賃|房東|辦公室|水電|清潔|保全|空調|事務機/.test(b)) return '辦公室費用';
+  if (/機票|支社往來|經銷商|授權|教具|玩具|商品|禮物|即享券|條碼|檢驗|益生菌|pixsee|Pixsee/.test(b)) return '商品採購';
+  return '其他';
+}
+
+function renderAll() {
+  if (!DB) return;
+  renderKPI();
+  renderMonthlyChart();
+  renderDonut();
+  renderVendorBars();
+  populateCatFilter();
+}
+
+function renderKPI() {
+  const d = DB;
+  document.getElementById('latestMonthLabel').textContent = d.latest_month_ad;
+  document.getElementById('kpiApMonth').textContent = d.latest_month_ad;
+  document.getElementById('kpiPreMonth').textContent = d.latest_month_ad;
+  document.getElementById('kpiTotal').textContent = '$' + fmt(d.total_cumulative);
+  document.getElementById('kpiAp').textContent = '$' + fmt(d.total_ap);
+  document.getElementById('kpiPre').textContent = '$' + fmt(d.total_prepay);
+  document.getElementById('kpiApPct').textContent = '佔累計 ' + (d.total_ap / d.total_cumulative * 100).toFixed(1) + '%';
+  document.getElementById('kpiPrePct').textContent = '佔累計 ' + (d.total_prepay / d.total_cumulative * 100).toFixed(1) + '%';
+}
+
+function renderMonthlyChart() {
+  const labels = DB.monthly.map(m => m.month_ad.replace('20', "'"));
+  const apData = DB.monthly.map(m => m.ap || 0);
+  const preData = DB.monthly.map(m => m.prepay || 0);
+  const xData = DB.monthly.map(m => m.x || 0);
+  const writeoffData = DB.monthly.map(m => m.writeoff || 0);
+  const totalData = DB.monthly.map(m => m.total || 0);
+
+  const totalLabelPlugin = {
+    id: 'totalLabels',
+    afterDatasetsDraw(chart) {
+      const { ctx, data, scales: { x, y } } = chart;
+      ctx.save();
+      ctx.font = '500 11px sans-serif';
+      ctx.fillStyle = '#444441';
+      ctx.textAlign = 'center';
+      data.labels.forEach((label, i) => {
+        const total = totalData[i];
+        const positiveSum = (apData[i]||0) + (preData[i]||0) + (xData[i]||0);
+        const xPos = x.getPixelForValue(i);
+        const yPos = y.getPixelForValue(positiveSum) - 6;
+        if (total !== 0) ctx.fillText((total/10000).toFixed(0)+'萬', xPos, yPos);
+      });
+      ctx.restore();
+    }
+  };
+
+  const ctx = document.getElementById('monthlyChart').getContext('2d');
+  if (monthlyChartInst) monthlyChartInst.destroy();
+  monthlyChartInst = new Chart(ctx, {
+    type: 'bar',
+    plugins: [totalLabelPlugin],
+    data: {
+      labels,
+      datasets: [
+        { label: '應付',  data: apData,      backgroundColor: '#5DCAA5', stack: 'a' },
+        { label: '預付',  data: preData,      backgroundColor: '#EF9F27', stack: 'a' },
+        { label: 'X（待確認）', data: xData,  backgroundColor: '#B5D4F4', stack: 'a' },
+        { label: '沖銷',  data: writeoffData, backgroundColor: '#F09595', stack: 'a' },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { font: { size: 11 }, boxWidth: 12 } },
+        tooltip: {
+          callbacks: {
+            afterBody: (items) => {
+              const idx = items[0].dataIndex;
+              return ['─────────────', '月總計：$' + fmt(totalData[idx])];
+            }
+          }
+        }
+      },
+      scales: {
+        x: { stacked: true, ticks: { font: { size: 11 } } },
+        y: {
+          stacked: true,
+          ticks: { font: { size: 11 }, callback: v => (v/10000).toFixed(0) + '萬' }
+        }
+      }
+    }
+  });
+}
+
+function populateCatFilter() {
+  const sel = document.getElementById('catFilter');
+  const cats = [...new Set(DB.vendors.map(v => v.category))].sort();
+  sel.innerHTML = '<option value="">全部業務類別</option>';
+  cats.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c; opt.textContent = c;
+    sel.appendChild(opt);
+  });
+}
+
+function applyCatFilter() {
+  catFilter = document.getElementById('catFilter').value;
+  barsShown = 10;
+  renderDonut();
+  renderVendorBars();
+}
+
+function getFilteredVendors() {
+  return catFilter ? DB.vendors.filter(v => v.category === catFilter) : DB.vendors;
+}
+
+function getSortValue(v) {
+  let total = 0;
+  if (activeViews.annual) total += v.cumulative;
+  if (activeViews.ap) total += v.ap;
+  if (activeViews.prepay) total += v.prepay;
+  return total;
+}
+
+function renderDonut() {
+  const vendors = getFilteredVendors();
+  const catTotals = {};
+  vendors.forEach(v => {
+    catTotals[v.category] = (catTotals[v.category] || 0) + v.cumulative;
+  });
+  const sorted = Object.entries(catTotals).sort((a,b) => b[1]-a[1]);
+  const total = sorted.reduce((s, [,v]) => s + v, 0);
+
+  const labels = sorted.map(([k]) => k);
+  const data = sorted.map(([,v]) => v);
+  const bgColors = labels.map(l => (CAT_COLORS[l] || CAT_COLORS['其他']).bg);
+
+  const ctx = document.getElementById('donutChart').getContext('2d');
+  if (donutChartInst) donutChartInst.destroy();
+  donutChartInst = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: bgColors, borderWidth: 1, borderColor: '#fff' }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      cutout: '60%',
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (item) => item.label + ': $' + fmt(item.raw) + ' (' + (item.raw/total*100).toFixed(1) + '%)' } }
+      },
+      onClick: (e, elements) => {
+        if (elements.length > 0) {
+          const cat = labels[elements[0].index];
+          catFilter = (catFilter === cat) ? '' : cat;
+          document.getElementById('catFilter').value = catFilter;
+          barsShown = 10;
+          renderDonut(); renderVendorBars();
+        }
+      }
+    }
+  });
+
+  // Legend
+  const legendEl = document.getElementById('donutLegend');
+  legendEl.innerHTML = '';
+  sorted.forEach(([cat, val]) => {
+    const c = CAT_COLORS[cat] || CAT_COLORS['其他'];
+    const pct = (val / total * 100).toFixed(1);
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+    item.style.background = (catFilter === cat) ? c.light : '';
+    item.innerHTML = `<div class="legend-dot" style="background:${c.bg}"></div><span>${cat}</span><span class="legend-pct">${pct}%</span>`;
+    item.onclick = () => {
+      catFilter = (catFilter === cat) ? '' : cat;
+      document.getElementById('catFilter').value = catFilter;
+      barsShown = 10;
+      renderDonut(); renderVendorBars();
+    };
+    legendEl.appendChild(item);
+  });
+}
+
+function toggleView(type) {
+  const allActive = activeViews.annual && activeViews.ap && activeViews.prepay;
+  const justThis = activeViews[type] && !Object.entries(activeViews).some(([k,v]) => k !== type && v);
+
+  if (justThis) {
+    // Can't deselect all — keep this one
+  } else if (type === 'annual' && (activeViews.ap || activeViews.prepay)) {
+    // annual + another: will be parallel — allowed
+    activeViews[type] = !activeViews[type];
+  } else {
+    activeViews[type] = !activeViews[type];
+  }
+  if (!activeViews.annual && !activeViews.ap && !activeViews.prepay) activeViews[type] = true;
+
+  // Update button styles
+  document.getElementById('btnAnnual').className = 'vtbtn' + (activeViews.annual ? ' active-annual' : '');
+  document.getElementById('btnAp').className = 'vtbtn' + (activeViews.ap ? ' active-ap' : '');
+  document.getElementById('btnPrepay').className = 'vtbtn' + (activeViews.prepay ? ' active-prepay' : '');
+
+  barsShown = 10;
+}
+
+function isParallelMode() {
+  return activeViews.annual && (activeViews.ap || activeViews.prepay);
+}
+
+function renderVendorBars() {
+  const vendors = getFilteredVendors().slice();
+  vendors.sort((a, b) => getSortValue(b) - getSortValue(a));
+  const shown = vendors.slice(0, barsShown);
+  const maxVal = Math.max(...shown.map(v => getSortValue(v)), 1);
+  const parallel = isParallelMode();
+
+  const wrap = document.getElementById('vendorBars');
+  wrap.innerHTML = '';
+
+  shown.forEach(v => {
+    const row = document.createElement('div');
+    row.className = 'vbar-row';
+
+    const name = document.createElement('div');
+    name.className = 'vbar-name';
+    name.textContent = v.vendor;
+    name.title = v.vendor;
+
+    const track = document.createElement('div');
+    track.className = 'vbar-track';
+    track.style.flexDirection = 'column';
+    track.style.height = parallel ? '36px' : '18px';
+
+    if (parallel) {
+      // Sub-rows for each active type
+      const types = [
+        { key: 'annual', val: v.cumulative, color: '#378ADD', label: '累計' },
+        { key: 'ap', val: v.ap, color: '#5DCAA5', label: '應付' },
+        { key: 'prepay', val: v.prepay, color: '#EF9F27', label: '預付' },
+      ].filter(t => activeViews[t.key]);
+
+      types.forEach(t => {
+        const subRow = document.createElement('div');
+        subRow.style.cssText = 'display:flex;align-items:center;flex:1;';
+        const seg = document.createElement('div');
+        seg.style.cssText = `height:10px;border-radius:2px;background:${t.color};width:${Math.max((t.val/maxVal)*100,0)}%;transition:width 0.3s;`;
+        subRow.appendChild(seg);
+        track.appendChild(subRow);
+      });
+    } else {
+      // Stacked (ap + prepay only)
+      const totalW = getSortValue(v);
+      const pct = totalW / maxVal * 100;
+      if (activeViews.ap && activeViews.prepay && !activeViews.annual) {
+        const apW = v.ap / maxVal * 100;
+        const preW = v.prepay / maxVal * 100;
+        const s1 = document.createElement('div'); s1.className = 'vbar-seg'; s1.style.width = apW + '%'; s1.style.background = '#5DCAA5';
+        const s2 = document.createElement('div'); s2.className = 'vbar-seg'; s2.style.width = preW + '%'; s2.style.background = '#EF9F27';
+        track.appendChild(s1); track.appendChild(s2);
+      } else {
+        const color = activeViews.annual ? '#378ADD' : activeViews.ap ? '#5DCAA5' : '#EF9F27';
+        const seg = document.createElement('div'); seg.className = 'vbar-seg'; seg.style.width = pct + '%'; seg.style.background = color;
+        track.appendChild(seg);
+      }
+    }
+
+    const val = document.createElement('div');
+    val.className = 'vbar-val';
+    val.textContent = fmtWan(getSortValue(v));
+
+    row.appendChild(name); row.appendChild(track); row.appendChild(val);
+    row.onclick = () => scrollToVendorCard(v.vendor);
+    wrap.appendChild(row);
+  });
+
+  const btn = document.getElementById('barsShowMore');
+  const colBtn = document.getElementById('barsCollapseBtn');
+  if (barsShown >= vendors.length) {
+    btn.style.display = 'none';
+  } else {
+    btn.style.display = 'block';
+    const next = Math.min(barsShown + 10, vendors.length);
+    btn.textContent = `顯示第 ${barsShown + 1} ～ ${next} 筆 ▼`;
+  }
+  colBtn.style.display = barsShown > 10 ? 'block' : 'none';
+}
+
+function showMoreBars() {
+  barsShown += 10;
+  renderVendorBars();
+}
+
+function collapseToTop10() {
+  barsShown = 10;
+  renderVendorBars();
+  document.querySelector('.viz-split').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+let searchViews = { annual: true, ap: false, prepay: false };
+
+function renderVendorCards() {}
+
+function toggleCard(header) {
+  const card = header.closest('.vendor-card');
+  const body = card.querySelector('.vendor-body');
+  const icon = card.querySelector('.expand-icon');
+  const isOpen = body.classList.toggle('open');
+  card.classList.toggle('expanded', isOpen);
+  icon.textContent = isOpen ? '▼' : '▶';
+}
+
+function buildVendorCard(v) {
+  const isNeg = v.cumulative < 0;
+  const catColor = CAT_COLORS[v.category] || CAT_COLORS['其他'];
+  const card = document.createElement('div');
+  card.className = 'vendor-card';
+  card.innerHTML = `
+    <div class="vendor-header" onclick="toggleCard(this)">
+      <div>
+        <span class="vendor-name${isNeg?' negative':''}">${v.vendor}</span>
+        <span class="vendor-tag" style="background:${catColor.light};color:${catColor.dark};">${v.category}</span>
+      </div>
+      <div class="vendor-right">
+        <span class="vendor-amount${isNeg?' negative':''}">${isNeg?'-':''}$${fmt(Math.abs(v.cumulative))}</span>
+        <span class="expand-icon">▶</span>
+      </div>
+    </div>
+    <div class="vendor-body">
+      <div class="vendor-nums">
+        <div class="vnum-item">
+          <div class="vnum-label">年度累計</div>
+          <div class="vnum-val ${isNeg?'red':'blue'}">$${fmt(v.cumulative)}</div>
+        </div>
+        <div class="vnum-item">
+          <div class="vnum-label">當月應付（${DB.latest_month_ad}）</div>
+          <div class="vnum-val green">${v.ap ? '$'+fmt(v.ap) : '—'}</div>
+        </div>
+        <div class="vnum-item">
+          <div class="vnum-label">當月預付（${DB.latest_month_ad}）</div>
+          <div class="vnum-val amber">${v.prepay ? '$'+fmt(v.prepay) : '—'}</div>
+        </div>
+      </div>
+      ${v.business ? `<div class="vendor-note">&#128203; 業務說明：${v.business}${v.note ? '　備注：'+v.note : ''}</div>` : ''}
+    </div>`;
+  return card;
+}
+
+function getSearchSortValue(v) {
+  let t = 0;
+  if (searchViews.annual) t += v.cumulative;
+  if (searchViews.ap) t += v.ap;
+  if (searchViews.prepay) t += v.prepay;
+  return t;
+}
+
+function toggleSearchView(type) {
+  const only = searchViews[type] && !Object.entries(searchViews).some(([k,val]) => k !== type && val);
+  if (!only) searchViews[type] = !searchViews[type];
+  if (!searchViews.annual && !searchViews.ap && !searchViews.prepay) searchViews[type] = true;
+  document.getElementById('sBtnAnnual').className = 'vtbtn' + (searchViews.annual ? ' active-annual' : '');
+  document.getElementById('sBtnAp').className = 'vtbtn' + (searchViews.ap ? ' active-ap' : '');
+  document.getElementById('sBtnPrepay').className = 'vtbtn' + (searchViews.prepay ? ' active-prepay' : '');
+  onVendorSearch();
+}
+
+function isSearchParallel() {
+  return searchViews.annual && (searchViews.ap || searchViews.prepay);
+}
+
+function onVendorSearch() {
+  const q = document.getElementById('vendorSearch').value.trim();
+  const barArea = document.getElementById('searchBarArea');
+  const cards = document.getElementById('searchCards');
+  const empty = document.getElementById('searchEmpty');
+  const countBadge = document.getElementById('searchResultCount');
+
+  if (!q) {
+    barArea.style.display = 'none';
+    cards.innerHTML = '';
+    empty.style.display = 'none';
+    countBadge.textContent = '';
+    return;
+  }
+
+  const results = DB.vendors.filter(v =>
+    v.vendor.includes(q) || v.business.includes(q)
+  ).slice().sort((a, b) => getSearchSortValue(b) - getSearchSortValue(a));
+
+  countBadge.textContent = results.length + ' 筆';
+
+  if (results.length === 0) {
+    barArea.style.display = 'none';
+    cards.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+
+  empty.style.display = 'none';
+  barArea.style.display = 'block';
+
+  // Render bars
+  const barsEl = document.getElementById('searchBars');
+  barsEl.innerHTML = '';
+  const maxVal = Math.max(...results.map(v => Math.abs(getSearchSortValue(v))), 1);
+  const parallel = isSearchParallel();
+
+  results.forEach(v => {
+    const row = document.createElement('div');
+    row.className = 'vbar-row';
+    row.style.cursor = 'default';
+
+    const name = document.createElement('div');
+    name.className = 'vbar-name';
+    name.textContent = v.vendor;
+    name.title = v.vendor;
+
+    const track = document.createElement('div');
+    track.className = 'vbar-track';
+    track.style.flexDirection = 'column';
+    track.style.height = parallel ? '36px' : '18px';
+
+    if (parallel) {
+      const types = [
+        { key: 'annual', val: v.cumulative, color: '#378ADD' },
+        { key: 'ap', val: v.ap, color: '#5DCAA5' },
+        { key: 'prepay', val: v.prepay, color: '#EF9F27' },
+      ].filter(t => searchViews[t.key]);
+      types.forEach(t => {
+        const subRow = document.createElement('div');
+        subRow.style.cssText = 'display:flex;align-items:center;flex:1;';
+        const seg = document.createElement('div');
+        seg.style.cssText = `height:10px;border-radius:2px;background:${t.color};width:${Math.max((Math.abs(t.val)/maxVal)*100,0)}%;transition:width 0.3s;`;
+        subRow.appendChild(seg);
+        track.appendChild(subRow);
+      });
+    } else {
+      if (searchViews.ap && searchViews.prepay && !searchViews.annual) {
+        const apW = v.ap / maxVal * 100;
+        const preW = v.prepay / maxVal * 100;
+        const s1 = document.createElement('div'); s1.className = 'vbar-seg'; s1.style.width = apW + '%'; s1.style.background = '#5DCAA5';
+        const s2 = document.createElement('div'); s2.className = 'vbar-seg'; s2.style.width = preW + '%'; s2.style.background = '#EF9F27';
+        track.appendChild(s1); track.appendChild(s2);
+      } else {
+        const color = searchViews.annual ? '#378ADD' : searchViews.ap ? '#5DCAA5' : '#EF9F27';
+        const pct = Math.abs(getSearchSortValue(v)) / maxVal * 100;
+        const seg = document.createElement('div'); seg.className = 'vbar-seg'; seg.style.width = pct + '%'; seg.style.background = color;
+        track.appendChild(seg);
+      }
+    }
+
+    const val = document.createElement('div');
+    val.className = 'vbar-val';
+    const sv = getSearchSortValue(v);
+    val.textContent = sv < 0 ? '-' + fmtWan(Math.abs(sv)) : fmtWan(sv);
+    if (sv < 0) val.style.color = 'var(--red)';
+
+    row.appendChild(name); row.appendChild(track); row.appendChild(val);
+    barsEl.appendChild(row);
+  });
+
+  // Render cards (auto-expand since it's a search result)
+  cards.innerHTML = '';
+  results.forEach(v => {
+    const card = buildVendorCard(v);
+    const body = card.querySelector('.vendor-body');
+    const icon = card.querySelector('.expand-icon');
+    body.classList.add('open');
+    card.classList.add('expanded');
+    icon.textContent = '▼';
+    cards.appendChild(card);
+  });
+}
+
+function clearSearch() {
+  document.getElementById('vendorSearch').value = '';
+  onVendorSearch();
+}
+
+function scrollToVendorCard(vendorName) {
+  document.getElementById('vendorSearch').value = vendorName;
+  onVendorSearch();
+  document.getElementById('searchCards').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function toggleMemo() {
+  const body = document.getElementById('memoBody');
+  const icon = document.getElementById('memoToggleIcon');
+  const isOpen = body.classList.toggle('open');
+  icon.textContent = isOpen ? '▼ 收合' : '▶ 展開';
+}
+
+function saveHTML() {
+  const memo = document.getElementById('memoText').value;
+  const clone = document.documentElement.cloneNode(true);
+  // Embed memo
+  clone.querySelector('#memoText').value = memo;
+  // Mark memo open if has content
+  if (memo) {
+    clone.querySelector('#memoBody').classList.add('open');
+    clone.querySelector('#memoToggleIcon').textContent = '▼ 收合';
+  }
+  // Embed current DB as JSON
+  const script = clone.ownerDocument.createElement('script');
+  script.textContent = `window.__SAVED_DB__ = ${JSON.stringify(DB)};`;
+  clone.querySelector('head').appendChild(script);
+
+  const blob = new Blob(['<!DOCTYPE html>' + clone.outerHTML], { type: 'text/html;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `FY25_倍樂生支出報告_${DB.latest_month_ad.replace('/','')}.html`;
+  a.click();
+}
+
+document.getElementById('uploadInput').addEventListener('change', function(e) {
+  if (e.target.files[0]) parseExcel(e.target.files[0]);
+});
+
+// Load embedded saved DB if present (from saved HTML)
+window.addEventListener('DOMContentLoaded', () => {
+  if (window.__SAVED_DB__) {
+    DB = window.__SAVED_DB__;
+    renderAll();
+  } else {
+    // Load built-in data
+    DB = __BUILTIN_DATA__;
+    renderAll();
+  }
+});
+</script>
+
+<script>
+const __BUILTIN_DATA__ = {"monthly": [{"month_roc": "114/04", "month_ad": "2025/04", "ap": 1229063, "prepay": 3576957, "writeoff": -928337, "total": 9245702, "x": 5368019}, {"month_roc": "114/05", "month_ad": "2025/05", "ap": 10289487, "prepay": 1632224, "writeoff": 0, "total": 14592294, "x": 2670583}, {"month_roc": "114/06", "month_ad": "2025/06", "ap": 9446557, "prepay": 8817769, "writeoff": -6840, "total": 27175514, "x": 8918028}, {"month_roc": "114/07", "month_ad": "2025/07", "ap": 7897518, "prepay": 2130848, "writeoff": 0, "total": 12872745, "x": 2844379}, {"month_roc": "114/08", "month_ad": "2025/08", "ap": 3281539, "prepay": 1873369, "writeoff": -11738, "total": 5383403, "x": 240233}, {"month_roc": "114/09", "month_ad": "2025/09", "ap": 6552037, "prepay": 210000, "writeoff": -300044, "total": 7087681, "x": 625688}, {"month_roc": "114/10", "month_ad": "2025/10", "ap": 15414725, "prepay": 5973277, "writeoff": -877, "total": 29341101, "x": 7953976}, {"month_roc": "114/11", "month_ad": "2025/11", "ap": 5567774, "prepay": 2758491, "writeoff": 0, "total": 9933203, "x": 1606938}, {"month_roc": "114/12", "month_ad": "2025/12", "ap": 4504956, "prepay": 1172052, "writeoff": 0, "total": 8731382, "x": 3054374}, {"month_roc": "115/01", "month_ad": "2026/01", "ap": 6579499, "prepay": 6517153, "writeoff": -766036, "total": 16182928, "x": 3852312}, {"month_roc": "115/02", "month_ad": "2026/02", "ap": 14232781, "prepay": 1043089, "writeoff": -79752, "total": 16707211, "x": 1511093}, {"month_roc": "115/03", "month_ad": "2026/03", "ap": 10836663, "prepay": 1058458, "writeoff": 222942, "total": 12516314, "x": 398251}], "vendors": [{"business": "舞台劇演出劇團", "vendor": "Ｏ劇團", "cumulative": 24829724, "ap": 0, "prepay": 0, "note": "", "category": "舞台劇"}, {"business": "舞台劇夏季演出劇團", "vendor": "親一下(KISSME)劇團", "cumulative": 17382802, "ap": 0, "prepay": 0, "note": "", "category": "舞台劇"}, {"business": "DB2軟體維運/M365委外/SmartIT軟體授權/資安軟體TFG維護", "vendor": "元凱資訊股份有限公司", "cumulative": 11004074, "ap": 0, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "印刷", "vendor": "紅藍彩藝", "cumulative": 10194109, "ap": 3428430, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "倉庫", "vendor": "翔得捷物流", "cumulative": 8906554, "ap": 851204, "prepay": 0, "note": "", "category": "物流倉儲"}, {"business": "", "vendor": "社員", "cumulative": 7482583, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "數位典藏募資、宣傳廠商", "vendor": "貝殼放大股份有限公司", "cumulative": 5640710, "ap": 416889, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "勞工保險", "vendor": "勞工保險局", "cumulative": 4900103, "ap": 902117, "prepay": 0, "note": "", "category": "人事福利"}, {"business": "武昌辦公室5F房東", "vendor": "第二計劃股份有限公司", "cumulative": 4496815, "ap": 0, "prepay": 0, "note": "", "category": "辦公室費用"}, {"business": "儲存伺服器軟體Nexenta維護、VPN MA維護", "vendor": "奇煜科技有限公司", "cumulative": 4360371, "ap": 0, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "網路資訊（奇酷網、數位典藏網、APP串流）費用", "vendor": "齊力樂門科技(股)公司", "cumulative": 3586007, "ap": 165194, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "印刷", "vendor": "中華彩色印刷", "cumulative": 3499202, "ap": 33592, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "授權合作廠商（根華、悠活原力、瑞展、維新）", "vendor": "好園地股份有限公司", "cumulative": 3081177, "ap": 371069, "prepay": 0, "note": "", "category": "商品採購"}, {"business": "CRM、IDC機房DELL伺服器設備維護、系統運用服務", "vendor": "直達商業股份有限公司", "cumulative": 2766750, "ap": 262500, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "支社往來", "vendor": "日本流用(支社往來)", "cumulative": 2657183, "ap": 0, "prepay": 0, "note": "", "category": "商品採購"}, {"business": "勞工+眷屬健保", "vendor": "中央健保局", "cumulative": 2379267, "ap": 268210, "prepay": 0, "note": "", "category": "人事福利"}, {"business": "pixsee巧虎娃娃採購", "vendor": "神寶醫資股份有限公司", "cumulative": 2145000, "ap": 0, "prepay": 0, "note": "", "category": "商品採購"}, {"business": "國稅局", "vendor": "國稅局(各類扣繳稅款、營業稅)", "cumulative": 2143473, "ap": 358085, "prepay": 0, "note": "", "category": "財務法務"}, {"business": "會計事務所", "vendor": "資誠聯合會計師事務所", "cumulative": 2139372, "ap": 0, "prepay": 180043, "note": "財稅簽證第二期款", "category": "財務法務"}, {"business": "ERP維護", "vendor": "鼎新數智股份有限公司", "cumulative": 2107904, "ap": 0, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "FB、IG官方粉絲團代操商", "vendor": "桑笛數位行銷有限公司", "cumulative": 2007180, "ap": 25000, "prepay": 0, "note": "", "category": "行銷投放"}, {"business": "Baby MineAPP廠商", "vendor": "海超數位整合有限公司", "cumulative": 1653750, "ap": 0, "prepay": 196875, "note": "孕寶APP", "category": "IT系統"}, {"business": "IDC機櫃月租", "vendor": "數位通國際網路", "cumulative": 1615028, "ap": 302375, "prepay": 63190, "note": "", "category": "IT系統"}, {"business": "報關行", "vendor": "台灣住倉", "cumulative": 1602471, "ap": 0, "prepay": 0, "note": "", "category": "物流倉儲"}, {"business": "Super 8/LINE行銷平台", "vendor": "雲發互動科技有限公司", "cumulative": 1592640, "ap": 6300, "prepay": 546000, "note": "Super8 企業方案平台使用費1年", "category": "IT系統"}, {"business": "貼紙印刷", "vendor": "璟華印刷股份有限公司", "cumulative": 1590930, "ap": 43000, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "印刷", "vendor": "彩峰造藝", "cumulative": 1450973, "ap": 836262, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "教具及禮物", "vendor": "紫晶興業有限公司", "cumulative": 1342142, "ap": 258900, "prepay": 0, "note": "", "category": "商品採購"}, {"business": "KOL、社群頭告投放代操商", "vendor": "艾得基客行銷顧問", "cumulative": 1310409, "ap": 107100, "prepay": 0, "note": "", "category": "行銷投放"}, {"business": "Line點數代購商", "vendor": "維肯媒體股份有限公司", "cumulative": 1168219, "ap": 112538, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "SHOPLINE關鍵字廣告公司", "vendor": "商線科技股份有限公司", "cumulative": 1103051, "ap": 50409, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "武昌辦公室8F房東", "vendor": "理想生活計劃股份有限公司", "cumulative": 1035147, "ap": 0, "prepay": 0, "note": "", "category": "辦公室費用"}, {"business": "產險（辦公室、倉庫火險）保險公司", "vendor": "富邦產物保險", "cumulative": 989734, "ap": 0, "prepay": 0, "note": "", "category": "物流倉儲"}, {"business": "Netflix、MP4、MOV轉檔、電影置換製作", "vendor": "意妍堂製作", "cumulative": 929880, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "Line系統廠商、PNP、簡訊費用", "vendor": "酷必資訊股份有限公司", "cumulative": 841536, "ap": 0, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "教具玩具（維新贈品、絨毛偶、抱枕）", "vendor": "金興玩具股份有限公司", "cumulative": 809992, "ap": 0, "prepay": 22050, "note": "", "category": "商品採購"}, {"business": "紙箱製作廠商", "vendor": "運晟行銷有限公司", "cumulative": 786240, "ap": 242025, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "Mirafeel廣告商", "vendor": "艾迪英特股份有限公司", "cumulative": 764610, "ap": 91350, "prepay": 0, "note": "", "category": "行銷投放"}, {"business": "錄音室", "vendor": "印笛錄音製作", "cumulative": 715455, "ap": 0, "prepay": 0, "note": "", "category": "舞台劇"}, {"business": "國外交易廠商", "vendor": "巨翔電子有限公司", "cumulative": 643153, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "教具玩具-萬代（黏土、甜甜圈、積木）", "vendor": "萬榮國際企業股份有限公司", "cumulative": 618624, "ap": -68088, "prepay": 0, "note": "", "category": "商品採購"}, {"business": "教具製作廠商", "vendor": "鑫銀海電子有限公司", "cumulative": 594404, "ap": 0, "prepay": 0, "note": "", "category": "商品採購"}, {"business": "Adobe軟體", "vendor": "快克利有限公司", "cumulative": 580000, "ap": 0, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "辦公室電費+水費", "vendor": "武昌街水電費", "cumulative": 565749, "ap": 46218, "prepay": 0, "note": "", "category": "辦公室費用"}, {"business": "Firewall & 網路維護", "vendor": "齊發電腦有限公司", "cumulative": 532140, "ap": 12600, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "日籍主管房屋租賃 廠商", "vendor": "林姿秀", "cumulative": 527340, "ap": 43945, "prepay": 0, "note": "", "category": "辦公室費用"}, {"business": "三友貨運", "vendor": "外貿貨運有限公司", "cumulative": 522270, "ap": 48300, "prepay": 0, "note": "", "category": "物流倉儲"}, {"business": "數位典藏電子書", "vendor": "達志有限公司", "cumulative": 516612, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "日籍主管房屋租賃 廠商", "vendor": "王春蓮", "cumulative": 500976, "ap": 41748, "prepay": 0, "note": "", "category": "辦公室費用"}, {"business": "機票", "vendor": "良友旅行社股份有限公司", "cumulative": 454070, "ap": 0, "prepay": 50300, "note": "", "category": "商品採購"}, {"business": "即享券", "vendor": "宜睿智慧股份有限公司", "cumulative": 445884, "ap": 222942, "prepay": 0, "note": "", "category": "商品採購"}, {"business": "CDP  Infobip", "vendor": "精誠科技", "cumulative": 444012, "ap": 0, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "員工保險公司", "vendor": "凱基人壽保險股份有限公司", "cumulative": 426896, "ap": 2877, "prepay": 0, "note": "", "category": "人事福利"}, {"business": "KOL", "vendor": "一起出發工作室", "cumulative": 423775, "ap": 0, "prepay": 0, "note": "", "category": "行銷投放"}, {"business": "系統運用（區域網路、CRM）", "vendor": "太乙光國際(股)公司", "cumulative": 388500, "ap": 0, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "FUCO名條列印", "vendor": "景竣實業股份有限公司", "cumulative": 385109, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "遠傳電信費（0800、NGN、國際電話）", "vendor": "速博電話", "cumulative": 375621, "ap": 19756, "prepay": 0, "note": "", "category": "其他"}, {"business": "影像製作", "vendor": "可以數位傳播有限公司", "cumulative": 350000, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "福委會", "vendor": "職工福利委員會", "cumulative": 343038, "ap": 27466, "prepay": 0, "note": "", "category": "人事福利"}, {"business": "廣告素材繪製廠商", "vendor": "彭欣雲", "cumulative": 342870, "ap": 44500, "prepay": 0, "note": "", "category": "行銷投放"}, {"business": "FB廣告代操商", "vendor": "傑思愛德威媒體(股)", "cumulative": 338741, "ap": 10775, "prepay": 0, "note": "", "category": "行銷投放"}, {"business": "員工健檢", "vendor": "台北美兆診所", "cumulative": 294300, "ap": 294300, "prepay": 0, "note": "", "category": "人事福利"}, {"business": "蝦皮", "vendor": "新加坡商蝦皮", "cumulative": 290380, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "巧虎夢想樂園專案", "vendor": "周麗玲", "cumulative": 286404, "ap": 30000, "prepay": 0, "note": "", "category": "舞台劇"}, {"business": "繪圖完稿", "vendor": "周佳寧", "cumulative": 277557, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "經銷商", "vendor": "美國經銷商", "cumulative": 249683, "ap": 0, "prepay": 0, "note": "", "category": "商品採購"}, {"business": "印刷", "vendor": "長城印刷", "cumulative": 234219, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "商品檢驗", "vendor": "台灣玩具暨兒童用品ST", "cumulative": 232705, "ap": 840, "prepay": 0, "note": "", "category": "商品採購"}, {"business": "辦公室清潔公司", "vendor": "友利綜合管理顧問", "cumulative": 231000, "ap": 21000, "prepay": 0, "note": "", "category": "辦公室費用"}, {"business": "配音員", "vendor": "馮嘉德", "cumulative": 228417, "ap": 4000, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "網路SSL憑証費用(巧虎APP.LINE.官網)、光世代網路、電話費", "vendor": "中華電信", "cumulative": 227322, "ap": 35621, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "禮物採購", "vendor": "義美生醫技術股份有限公司", "cumulative": 216000, "ap": 216000, "prepay": 0, "note": "", "category": "商品採購"}, {"business": "網路代操+廣宣製作（Mirafeel、團團購、比比昂）", "vendor": "程瑋", "cumulative": 212321, "ap": 20000, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "學習商品（EQ)完稿家", "vendor": "孫珮瑜", "cumulative": 211725, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "租賃", "vendor": "黃亮珊", "cumulative": 197750, "ap": 39550, "prepay": 0, "note": "", "category": "辦公室費用"}, {"business": "租賃", "vendor": "邱亭維", "cumulative": 184570, "ap": 36914, "prepay": 0, "note": "", "category": "辦公室費用"}, {"business": "BCL", "vendor": "樂飛科技股份有限公司", "cumulative": 180760, "ap": 34776, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "團購佣金", "vendor": "繽紛紛有限公司", "cumulative": 178500, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "教具玩具（扭蛋、相片機）", "vendor": "玩美創意有限公司", "cumulative": 176200, "ap": 11275, "prepay": 0, "note": "", "category": "商品採購"}, {"business": "事務機（影印機）廠商", "vendor": "匯能數位整合有限公司", "cumulative": 175543, "ap": 15609, "prepay": 0, "note": "", "category": "辦公室費用"}, {"business": "電話系統EVOX", "vendor": "易得雲端股份有限公司", "cumulative": 172085, "ap": 14952, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "FB、IG官方粉絲團代操商", "vendor": "作好數位行銷有限公司", "cumulative": 171150, "ap": 0, "prepay": 0, "note": "", "category": "行銷投放"}, {"business": "影像製作", "vendor": "台欣影像製作有限公司", "cumulative": 166950, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "報關", "vendor": "七巧通運股份有限公司", "cumulative": 163989, "ap": 0, "prepay": 0, "note": "", "category": "物流倉儲"}, {"business": "經銷商", "vendor": "鄭瑛姿", "cumulative": 163134, "ap": 0, "prepay": 0, "note": "", "category": "商品採購"}, {"business": "年代售票", "vendor": "年代網際事業（股）", "cumulative": 162000, "ap": 0, "prepay": 0, "note": "", "category": "舞台劇"}, {"business": "EDM程式維護", "vendor": "繹宇數位科技", "cumulative": 158412, "ap": 0, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "經銷商", "vendor": "馬來西亞經銷商", "cumulative": 157627, "ap": 0, "prepay": 0, "note": "", "category": "商品採購"}, {"business": "辦公室保全公司", "vendor": "中興保全", "cumulative": 143640, "ap": 0, "prepay": 0, "note": "", "category": "辦公室費用"}, {"business": "配音員", "vendor": "楊凱凱", "cumulative": 139536, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "繪圖完稿", "vendor": "黃萍萍", "cumulative": 130161, "ap": 104469, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "KingswaySoft-SSIS軟體授權", "vendor": "友環股份有限公司", "cumulative": 128310, "ap": 0, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "Atlassian Confluence 訂閱&技術服務月租", "vendor": "新加坡商鈦坦科技股份有限公司台灣分公司", "cumulative": 123452, "ap": 14888, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "教具玩具（夢想樂園、SKATER商品）", "vendor": "永豐耀有限公司", "cumulative": 118856, "ap": 0, "prepay": 0, "note": "", "category": "舞台劇"}, {"business": "舞台劇商品影片、短影音剪輯廠商", "vendor": "紅傘映創有限公司", "cumulative": 116200, "ap": 4200, "prepay": 0, "note": "", "category": "舞台劇"}, {"business": "廣告素材繪製廠商", "vendor": "蕭右穆", "cumulative": 115720, "ap": 2000, "prepay": 0, "note": "", "category": "行銷投放"}, {"business": "桃園郵局", "vendor": "教材包裹郵資(桃園成功路)", "cumulative": 114746, "ap": 0, "prepay": 0, "note": "", "category": "物流倉儲"}, {"business": "教育玩具（育兒便利店巧虎聯名採購）", "vendor": "騰暘股份有限公司", "cumulative": 111804, "ap": 0, "prepay": 0, "note": "", "category": "商品採購"}, {"business": "團購佣金", "vendor": "林佳岑", "cumulative": 111783, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "廣告代理、模特兒、網頁、其他通路", "vendor": "鼎鼎聯合行銷股份有限公司", "cumulative": 105000, "ap": 0, "prepay": 0, "note": "", "category": "行銷投放"}, {"business": "KOL", "vendor": "樂奎有限公司", "cumulative": 101479, "ap": 0, "prepay": 0, "note": "", "category": "行銷投放"}, {"business": "配音員", "vendor": "張立昂", "cumulative": 100939, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "湯梓辰老師-AI巧虎顧問費", "vendor": "國立臺灣科技大學", "cumulative": 100000, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "廣告素材製作、代操+製圖費用", "vendor": "陳連珍", "cumulative": 98700, "ap": 10000, "prepay": 0, "note": "", "category": "行銷投放"}, {"business": "配音員", "vendor": "馬君珮", "cumulative": 87875, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "團購佣金", "vendor": "管涵雅", "cumulative": 83719, "ap": 3227, "prepay": 0, "note": "", "category": "其他"}, {"business": "繪圖完稿", "vendor": "黃天佑", "cumulative": 83125, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "舞台劇網頁素材製作廠商", "vendor": "窩窩科技行銷(股)", "cumulative": 81900, "ap": 3150, "prepay": 0, "note": "", "category": "舞台劇"}, {"business": "繪圖完稿", "vendor": "王玉鳳", "cumulative": 76400, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "益生菌佣金", "vendor": "維新國際股份有限公司", "cumulative": 73997, "ap": 5198, "prepay": 0, "note": "", "category": "商品採購"}, {"business": "2503巧虎夢想樂園偶師", "vendor": "劉羽珊", "cumulative": 73600, "ap": 6400, "prepay": 0, "note": "", "category": "舞台劇"}, {"business": "廣告宣傳", "vendor": "奇德娛樂有限公司", "cumulative": 73500, "ap": 0, "prepay": 0, "note": "", "category": "行銷投放"}, {"business": "場地租賃", "vendor": "西門町意舍酒店", "cumulative": 70528, "ap": 56528, "prepay": 0, "note": "", "category": "辦公室費用"}, {"business": "橋樑書IQ184偵探團系列繪圖授權費用", "vendor": "廖書荻", "cumulative": 70312, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "打字、完稿、正片、立體製作、音樂製作", "vendor": "陽雪娛樂國際有限公司", "cumulative": 70000, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "閱讀橋樑書系列IQ184偵探團1.2.3.4電子書音樂製作", "vendor": "一心傳播有限公司", "cumulative": 69300, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "繪圖完稿", "vendor": "張永仁", "cumulative": 60644, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "處份清運", "vendor": "綠大地企業有限公司", "cumulative": 58296, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "租車租賃公司", "vendor": "袋鼠國際租賃股份有限公司", "cumulative": 56438, "ap": 0, "prepay": 0, "note": "", "category": "辦公室費用"}, {"business": "產險（倉庫火險）公司", "vendor": "和泰產物保險股份有限公司", "cumulative": 55396, "ap": 0, "prepay": 0, "note": "", "category": "物流倉儲"}, {"business": "KOL大V生活經紀公司", "vendor": "春分好日商業有限公司", "cumulative": 54276, "ap": 54276, "prepay": 0, "note": "", "category": "行銷投放"}, {"business": "娛樂稅", "vendor": "稅捐處(娛樂稅、印花稅)", "cumulative": 53100, "ap": 7141, "prepay": 0, "note": "", "category": "舞台劇"}, {"business": "數位典藏外稿家", "vendor": "秦詩雅", "cumulative": 52500, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "商品採購", "vendor": "帝威爾皮件企業有限公司", "cumulative": 51030, "ap": 0, "prepay": 0, "note": "", "category": "商品採購"}, {"business": "大陸經銷商", "vendor": "君毅工作室陳健毅", "cumulative": 50000, "ap": 0, "prepay": 0, "note": "", "category": "商品採購"}, {"business": "KOL倩兒經紀公司", "vendor": "津智國際有限公司", "cumulative": 49796, "ap": 0, "prepay": 0, "note": "", "category": "行銷投放"}, {"business": "BCL CSP（Content Security Policy-內容安全政策）)、短網址維護", "vendor": "艾格數位有限公司", "cumulative": 49140, "ap": 0, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "日籍主管房屋租賃 廠商", "vendor": "台灣世達志不動產顧問", "cumulative": 49088, "ap": 4988, "prepay": 0, "note": "", "category": "辦公室費用"}, {"business": "產險", "vendor": "明台產物保險(股)", "cumulative": 47944, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "黑貓宅即便", "vendor": "統一速達股份有限公司", "cumulative": 45450, "ap": 3490, "prepay": 0, "note": "", "category": "物流倉儲"}, {"business": "仲介服務費", "vendor": "全球國際物業有限公司", "cumulative": 45000, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "繪圖完稿", "vendor": "鄭毓仙", "cumulative": 45000, "ap": 15000, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "繪圖完稿", "vendor": "喬慧中", "cumulative": 42750, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "團購佣金", "vendor": "高曉薇", "cumulative": 42548, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "繪圖完稿", "vendor": "喻清如", "cumulative": 41748, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "空調保養維修", "vendor": "翔弘空調工程有限公司", "cumulative": 37800, "ap": 37800, "prepay": 0, "note": "", "category": "辦公室費用"}, {"business": "辦公室衛生紙廠商", "vendor": "億瑄實業有限公司", "cumulative": 37590, "ap": 0, "prepay": 0, "note": "", "category": "辦公室費用"}, {"business": "網路金流", "vendor": "藍新科技股份有限公司", "cumulative": 36618, "ap": 2794, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "廣告代理、模特兒、網頁、其他通路", "vendor": "富創藍圖有限公司", "cumulative": 35427, "ap": 0, "prepay": 0, "note": "", "category": "行銷投放"}, {"business": "廣告宣傳", "vendor": "沐沐搞事有限公司", "cumulative": 35000, "ap": 35000, "prepay": 0, "note": "", "category": "行銷投放"}, {"business": "樂園培訓", "vendor": "賀湘儀", "cumulative": 33400, "ap": 6660, "prepay": 0, "note": "", "category": "舞台劇"}, {"business": "商品拍攝費+照片後製", "vendor": "何佳珠", "cumulative": 32380, "ap": 0, "prepay": 0, "note": "", "category": "商品採購"}, {"business": "人事招募", "vendor": "一零四資訊科技(股)", "cumulative": 31500, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "數位典藏外稿家", "vendor": "鄭博文", "cumulative": 30000, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "廣告宣傳", "vendor": "微思特搜有限公司", "cumulative": 29400, "ap": 0, "prepay": 0, "note": "", "category": "行銷投放"}, {"business": "會計事務所", "vendor": "勤業眾信", "cumulative": 28800, "ap": 36000, "prepay": 0, "note": "", "category": "財務法務"}, {"business": "巧虎牛仔褲、胖襖製作", "vendor": "抹抹設計有限公司", "cumulative": 27038, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "研修", "vendor": "台北市私立永漢語文短期補習班", "cumulative": 26400, "ap": 0, "prepay": 0, "note": "", "category": "人事福利"}, {"business": "音樂會易拉展海報+架組", "vendor": "酷恩廣告工坊", "cumulative": 24990, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "繪圖完稿", "vendor": "張郁婕", "cumulative": 24832, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "快遞公司", "vendor": "台灣順豐速運(股)", "cumulative": 23800, "ap": 1605, "prepay": 0, "note": "", "category": "物流倉儲"}, {"business": "打字、完稿、正片、立體製作、音樂製作", "vendor": "雅正資訊科技有限公司", "cumulative": 23520, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "BCL異業合作廠商", "vendor": "大樹醫藥股份有限公司", "cumulative": 23100, "ap": 0, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "錄音室", "vendor": "采漾錄音製作有限公司", "cumulative": 23100, "ap": 0, "prepay": 0, "note": "", "category": "舞台劇"}, {"business": "攝影", "vendor": "林亮祈", "cumulative": 21972, "ap": 25000, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "繪圖完稿", "vendor": "陳星宇", "cumulative": 21972, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "橋樑書IQ184偵探團系列文授權費用", "vendor": "王宇清", "cumulative": 19578, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "處理費", "vendor": "鼎美股份有限公司", "cumulative": 17464, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "DM、海報製作", "vendor": "楓木林企業有限公司", "cumulative": 17220, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "打字、完稿、正片、立體製作、音樂製作", "vendor": "２０％實驗劇坊", "cumulative": 15480, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "商品編輯外稿家", "vendor": "黃清田", "cumulative": 15000, "ap": 0, "prepay": 0, "note": "", "category": "商品採購"}, {"business": "商品製作", "vendor": "祈星實業股份有限公司", "cumulative": 13896, "ap": 0, "prepay": 0, "note": "", "category": "商品採購"}, {"business": "廣告宣傳", "vendor": "好神的設計工作室高名辰", "cumulative": 13650, "ap": 0, "prepay": 0, "note": "", "category": "行銷投放"}, {"business": "廣告代理、模特兒、網頁、其他通路", "vendor": "山姆先生這一家", "cumulative": 13314, "ap": 0, "prepay": 0, "note": "", "category": "行銷投放"}, {"business": "攝影", "vendor": "張綺玲", "cumulative": 13000, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "團購佣金", "vendor": "毛心潔", "cumulative": 12859, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "KOL（FanFan美好生活）經紀公司", "vendor": "蕭雅帆", "cumulative": 12499, "ap": 0, "prepay": 0, "note": "", "category": "行銷投放"}, {"business": "繪圖完稿", "vendor": "許紀萱", "cumulative": 12363, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "繪圖完稿", "vendor": "邱郁婷", "cumulative": 12000, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "辦公室噴霧清新劑及電池", "vendor": "全泰瑩有限公司", "cumulative": 12000, "ap": 2400, "prepay": 0, "note": "", "category": "辦公室費用"}, {"business": "繪圖完稿", "vendor": "林芷伊", "cumulative": 12000, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "港務服務", "vendor": "交通部航港局", "cumulative": 11914, "ap": 1334, "prepay": 0, "note": "", "category": "物流倉儲"}, {"business": "繪圖完稿", "vendor": "向志賢", "cumulative": 11200, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "白板", "vendor": "耀偉實業有限公司", "cumulative": 10946, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "繪圖完稿", "vendor": "林彥鑫", "cumulative": 10812, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "台北郵局", "vendor": "退換貨中心(北門)", "cumulative": 10484, "ap": 1010, "prepay": 0, "note": "", "category": "物流倉儲"}, {"business": "繪圖完稿", "vendor": "蔡妤晨", "cumulative": 10299, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "繪圖完稿", "vendor": "謝怡珣", "cumulative": 10000, "ap": 10000, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "數位典藏外稿家", "vendor": "邱敦郁", "cumulative": 10000, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "數位典藏外稿家", "vendor": "朱良敏", "cumulative": 10000, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "借片", "vendor": "互騰有限公司", "cumulative": 9975, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "廣告素材（網頁/圖片/影音）製作", "vendor": "異想設計工作坊", "cumulative": 9776, "ap": 0, "prepay": 0, "note": "", "category": "行銷投放"}, {"business": "繪圖完稿", "vendor": "洪珮瑜", "cumulative": 9166, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "團購佣金", "vendor": "鍾宛妤(鍾陳眷屬)", "cumulative": 9074, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "辦公室文具廠商", "vendor": "大好興業(股)公司", "cumulative": 8710, "ap": 0, "prepay": 0, "note": "", "category": "辦公室費用"}, {"business": "紙箱製作廠商", "vendor": "鑫鈺實業有限公司", "cumulative": 8663, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "國外快遞", "vendor": "華美航空(OCS)", "cumulative": 8628, "ap": 710, "prepay": 0, "note": "", "category": "物流倉儲"}, {"business": "商品拍攝廠商", "vendor": "墨影像創意有限公司", "cumulative": 8505, "ap": 0, "prepay": 0, "note": "", "category": "商品採購"}, {"business": "繪圖完稿", "vendor": "黃瑋婷", "cumulative": 8392, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "繪圖完稿", "vendor": "陳宏佳", "cumulative": 8000, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "舞台劇-音樂會宣傳廠商", "vendor": "映墨藝術整合設計有限公司", "cumulative": 8000, "ap": 0, "prepay": 0, "note": "", "category": "舞台劇"}, {"business": "攝影", "vendor": "黃(江－工＋靜)瑩", "cumulative": 8000, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "繪圖完稿", "vendor": "張芷寧", "cumulative": 8000, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "繪圖完稿", "vendor": "王映晴", "cumulative": 7773, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "團購佣金", "vendor": "陳姵璇", "cumulative": 7353, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "網路金流", "vendor": "綠界科技股份有限公司", "cumulative": 7159, "ap": 13000, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "樂園寄賣商品", "vendor": "悠活原力股份有限公司", "cumulative": 6839, "ap": 0, "prepay": 0, "note": "", "category": "舞台劇"}, {"business": "繪圖完稿", "vendor": "周岱陽", "cumulative": 6660, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "商品採購", "vendor": "璽福創意股份有限公司", "cumulative": 6625, "ap": 1893, "prepay": 0, "note": "", "category": "商品採購"}, {"business": "繪圖完稿", "vendor": "劉泓慧", "cumulative": 6570, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "舞台劇演員", "vendor": "徐淳耕", "cumulative": 6400, "ap": 0, "prepay": 0, "note": "", "category": "舞台劇"}, {"business": "廣告宣傳", "vendor": "展禾管理顧問有限公司", "cumulative": 6300, "ap": 0, "prepay": 0, "note": "", "category": "行銷投放"}, {"business": "國內快遞", "vendor": "幫你送股份有限公司", "cumulative": 6109, "ap": 242, "prepay": 0, "note": "", "category": "物流倉儲"}, {"business": "日文翻譯員", "vendor": "謝明珊", "cumulative": 6000, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "錄音剪接", "vendor": "百聿數碼創意", "cumulative": 6000, "ap": 0, "prepay": 0, "note": "", "category": "舞台劇"}, {"business": "配音員", "vendor": "許淑嬪", "cumulative": 6000, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "辦公室水電廠商", "vendor": "福順水電工程有限公司", "cumulative": 5565, "ap": 2835, "prepay": 0, "note": "", "category": "辦公室費用"}, {"business": "DM、海報製作", "vendor": "詠橙有限公司", "cumulative": 5103, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "商品編輯外稿家", "vendor": "黃偉華", "cumulative": 5000, "ap": 3000, "prepay": 0, "note": "", "category": "商品採購"}, {"business": "KOL", "vendor": "史黛優有限公司", "cumulative": 4687, "ap": 0, "prepay": 0, "note": "", "category": "行銷投放"}, {"business": "監視系統", "vendor": "廣佑科技股份有限公司", "cumulative": 4253, "ap": 0, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "巧虎偶、手套、鞋子製作與維護", "vendor": "新碩有限公司", "cumulative": 4200, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "繪圖完稿", "vendor": "張芳綺", "cumulative": 4200, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "清洗", "vendor": "加來大乾洗店", "cumulative": 3980, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "團購佣金", "vendor": "戴敬瑜", "cumulative": 3736, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "KOL", "vendor": "娃啦有限公司", "cumulative": 3709, "ap": 0, "prepay": 0, "note": "", "category": "行銷投放"}, {"business": "團購佣金", "vendor": "呦喜企業社蔡妤晨", "cumulative": 3705, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "繪圖完稿", "vendor": "劉齡雅", "cumulative": 3704, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "飲水機", "vendor": "賀眾飲水機", "cumulative": 3600, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "繪圖完稿", "vendor": "許又勻", "cumulative": 3478, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "繪圖完稿", "vendor": "魯家勳", "cumulative": 3000, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "團購佣金", "vendor": "蘇月英", "cumulative": 2664, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "營業素材", "vendor": "林淑卿", "cumulative": 2500, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "好情緒EQ X 品格人際套組說明書攝影費", "vendor": "吳政儒", "cumulative": 1500, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "商品編輯外稿家", "vendor": "陳文彩", "cumulative": 1500, "ap": 0, "prepay": 0, "note": "", "category": "商品採購"}, {"business": "團購佣金", "vendor": "謝亭儀", "cumulative": 1458, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "團購佣金", "vendor": "洪愉棻", "cumulative": 1374, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "KOL小雯媽咪生活經紀公司", "vendor": "軒恩有限公司", "cumulative": 1358, "ap": 0, "prepay": 0, "note": "", "category": "行銷投放"}, {"business": "團購佣金", "vendor": "腦波弱太太有限公司", "cumulative": 1150, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "比比昂日本跨境 - EDM素材製作商", "vendor": "兩點設計有限公司", "cumulative": 1050, "ap": 0, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "團購佣金", "vendor": "陳以芯", "cumulative": 1024, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "繪圖完稿", "vendor": "許皓捷", "cumulative": 1000, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "繪圖完稿", "vendor": "王秀蘭", "cumulative": 1000, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "團購佣金", "vendor": "盧立納", "cumulative": 960, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "團購佣金", "vendor": "謝宜珊", "cumulative": 538, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "人資系統mayo", "vendor": "鼎恒數位科技股份有限公司", "cumulative": 0, "ap": 0, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "桃園郵局", "vendor": "116號信箱退件回函郵資", "cumulative": 0, "ap": 0, "prepay": 0, "note": "", "category": "物流倉儲"}, {"business": "CDP、Linux平台系統廠商", "vendor": "台灣資誠國際有限公司", "cumulative": 0, "ap": 0, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "筆電採購+MS SQL 2022軟體授權", "vendor": "大同世界科技", "cumulative": 0, "ap": 0, "prepay": 0, "note": "", "category": "IT系統"}, {"business": "發票機", "vendor": "廣鐸企業有限公司", "cumulative": 0, "ap": 0, "prepay": 0, "note": "", "category": "其他"}, {"business": "KOL", "vendor": "老爹宇宙工作室朱玟綺", "cumulative": 0, "ap": 0, "prepay": 0, "note": "", "category": "行銷投放"}, {"business": "數位典藏外稿家", "vendor": "杜紫熒", "cumulative": 0, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "數位典藏外稿家", "vendor": "孫基榮", "cumulative": 0, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "律師事務所", "vendor": "有澤法律事務所", "cumulative": 0, "ap": 0, "prepay": 0, "note": "", "category": "財務法務"}, {"business": "條碼", "vendor": "商品條碼策進會", "cumulative": 0, "ap": 0, "prepay": 0, "note": "", "category": "商品採購"}, {"business": "繪圖完稿", "vendor": "朱家鈺", "cumulative": -2340, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "繪圖完稿", "vendor": "許靜萍", "cumulative": -2500, "ap": 0, "prepay": 0, "note": "", "category": "製作印刷"}, {"business": "研修", "vendor": "國立臺灣師範大學", "cumulative": -79752, "ap": 0, "prepay": 0, "note": "", "category": "人事福利"}], "latest_month_roc": "115/03", "latest_month_ad": "2026/03", "total_cumulative": 169769478, "total_ap": 10904751, "total_prepay": 1058458};
+</script>
+
+</body>
+</html>
